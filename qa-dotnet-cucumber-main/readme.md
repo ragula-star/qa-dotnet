@@ -196,4 +196,4 @@ public class LoginPage
 
 ## Support
 
-For additional help or questions, please reach out to the team or create an issue in the repository.
+For additional help or questions, please reach out to the team or create an issue in the repository."# Task 2 - Skill Automation completed" 
