@@ -42,9 +42,9 @@ namespace qa_dotnet_cucumber.Pages
         public void LoginWithValidUser()
         {
            
-            _driver.Navigate().GoToUrl("http://localhost:5000"); 
+            _driver.Navigate().GoToUrl("http://localhost:5003/Home"); 
             signIn();
-            Login("validuser@example.com", "P@ssword123");
+            Login("ragulau4@gmail.com", "Ragula123@");
         }
         
 

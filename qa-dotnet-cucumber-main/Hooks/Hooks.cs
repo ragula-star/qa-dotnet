@@ -37,9 +37,9 @@ namespace qa_dotnet_cucumber.Hooks
             string json = File.ReadAllText(settingsPath);
             _settings = JsonSerializer.Deserialize<TestSettings>(json);
 
-            // Get project root by navigating up from bin/Debug/net8.0
+            
             string projectRoot = Path.GetFullPath(Path.Combine(currentDir, "..", ".."));
-            string reportFileName = _settings.Report.Path.TrimStart('/'); // e.g., "TestReport.html"
+            string reportFileName = _settings.Report.Path.TrimStart('/'); 
             string reportPath = Path.Combine(projectRoot, reportFileName);
 
             _htmlReporter = new ExtentSparkReporter(reportPath);
@@ -67,6 +67,41 @@ namespace qa_dotnet_cucumber.Hooks
             _objectContainer.RegisterInstanceAs<IWebDriver>(driver);
             _objectContainer.RegisterInstanceAs(new NavigationHelper(driver));
             _objectContainer.RegisterInstanceAs(new LoginPage(driver));
+
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("LanguageUpgrade"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                string[] previousLanguages = { "English", "French", "Hindi", "Tamil" };
+                foreach (var lang in previousLanguages)
+                {
+                    languagePage.CleanupLanguage(lang);
+                }
+            }
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("LanguageUpgradeNegative"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                languagePage.LoginToApplication();
+                languagePage.GoToLanguagesTab();
+                languagePage.DeleteAllLanguages(); 
+            }
+
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("SkillUpgrade"))
+            {
+                var skillPage = new SkillUpgradePages(driver);
+                skillPage.GoToSkillsTab();
+                skillPage.DeleteAllSkills(); 
+            }
+ 
+
+            lock (_reportLock)
+            {
+                _test = _extent!.CreateTest(scenarioContext.ScenarioInfo.Title);
+            }
+            Console.WriteLine($"Created test: {scenarioContext.ScenarioInfo.Title} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
+
 
             lock (_reportLock)
             {
@@ -103,6 +138,30 @@ namespace qa_dotnet_cucumber.Hooks
         public void AfterScenario()
         {
             var driver = _objectContainer.Resolve<IWebDriver>();
+
+            
+            if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("LanguageUpgrade"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                if (ScenarioContext.Current.TryGetValue("TestLanguage", out string testLanguage))
+                {
+                    languagePage.CleanupLanguage(testLanguage);
+                }
+            }
+
+            
+            if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("SkillUpgrade"))
+            {
+                var skillPage = new SkillUpgradePages(driver);
+                if (ScenarioContext.Current.TryGetValue("AddedSkills", out List<string> addedSkills))
+                {
+                    foreach (var skill in addedSkills)
+                    {
+                        skillPage.DeleteSkillByName(skill); // Delete only what the scenario added
+                    }
+                }
+            }
+ 
             driver?.Quit();
             Console.WriteLine($"Finished scenario on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
         }
