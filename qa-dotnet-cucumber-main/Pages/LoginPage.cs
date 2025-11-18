@@ -44,7 +44,7 @@ namespace qa_dotnet_cucumber.Pages
            
             _driver.Navigate().GoToUrl("http://localhost:5003/Home"); 
             signIn();
-            Login("ragulau4@gmail.com", "Ragula123@");
+            Login("ragulau4@gmail.com", "Ragula1234@");
         }
         
 

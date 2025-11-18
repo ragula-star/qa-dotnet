@@ -94,13 +94,33 @@ namespace qa_dotnet_cucumber.Hooks
                 skillPage.GoToSkillsTab();
                 skillPage.DeleteAllSkills(); 
             }
- 
 
-            lock (_reportLock)
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("Education"))
             {
-                _test = _extent!.CreateTest(scenarioContext.ScenarioInfo.Title);
+                var educationPage = new EducationPage(driver);
+                educationPage.GoToEducationtab();
+                educationPage.DeleteAllEducation();
             }
-            Console.WriteLine($"Created test: {scenarioContext.ScenarioInfo.Title} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
+
+            if (scenarioContext.ScenarioInfo.Tags.Contains("Certifications")) 
+            
+            {
+                
+                var certPage = new CertificationsPage(driver);
+
+                certPage.GoToCertificationsTab();
+                certPage.DeleteAllCertifications();
+            }
+
+
+
+
+            //lock (_reportLock)
+            //{
+            //    _test = _extent!.CreateTest(scenarioContext.ScenarioInfo.Title);
+            //}
+            //Console.WriteLine($"Created test: {scenarioContext.ScenarioInfo.Title} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
 
 
             lock (_reportLock)
@@ -157,11 +177,26 @@ namespace qa_dotnet_cucumber.Hooks
                 {
                     foreach (var skill in addedSkills)
                     {
-                        skillPage.DeleteSkillByName(skill); // Delete only what the scenario added
+                        skillPage.DeleteSkillByName(skill); 
                     }
                 }
             }
- 
+
+            if (ScenarioContext.Current.TryGetValue(
+                 "AddedEducation",
+                out List<(string university, string countryCollege, string title, string degree, string year)> addedEducation))
+            {
+                var educationPage = new EducationPage(driver);
+                educationPage.GoToEducationtab();
+
+                foreach (var edu in addedEducation)
+                {
+                    educationPage.DeleteEducationByUniversity(edu.university);
+                }
+            }
+
+
+
             driver?.Quit();
             Console.WriteLine($"Finished scenario on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
         }
