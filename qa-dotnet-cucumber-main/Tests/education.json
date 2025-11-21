@@ -1,0 +1,52 @@
+{
+  "education": [
+    {
+      "scenario": "valid",
+      "university": "Auckland University",
+      "country": "New Zealand",
+      "title": "Associate",
+      "degree": "Software Engineering",
+      "year": "2025"
+    },
+    {
+      "scenario": "duplicate",
+      "university": "Auckland University",
+      "country": "New Zealand",
+      "title": "Associate",
+      "degree": "Software Engineering",
+      "year": "2025"
+    },
+    {
+      "scenario": "long",
+      "university": "AAAAAAAAAAAAAAAAAAA...",
+      "country": "New Zealand",
+      "title": "PhD",
+      "degree": "Long Degree",
+      "year": "2023"
+    },
+    {
+      "scenario": "sql_injection",
+      "university": "'; DROP TABLE education;--",
+      "country": "Libya",
+      "title": "BFA",
+      "degree": "Exploit",
+      "year": "2022"
+    },
+    {
+      "scenario": "empty_fields",
+      "university": "",
+      "country": "",
+      "title": "",
+      "degree": "",
+      "year": ""
+    },
+    {
+      "scenario": "edit_test",
+      "university": "Edited University",
+      "country": "New Zealand",
+      "title": "Bachelors",
+      "degree": "Software Testing",
+      "year": "2025"
+    }
+  ]
+}

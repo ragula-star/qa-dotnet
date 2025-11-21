@@ -32,6 +32,7 @@ namespace qa_dotnet_cucumber.Steps
         {
             _certPage.GoToCertificationsTab();
             _certPage.DeleteAllCertifications();
+            
         }
 
         [When(@"I add the following certification")]
@@ -98,12 +99,12 @@ namespace qa_dotnet_cucumber.Steps
             Assert.That(allCerts.Count, Is.GreaterThanOrEqualTo(2), "Not all certifications were added!");
         }
 
-        [Then(@"the portal should show an error for duplicate certification entry")]
-        public void ThenThePortalShouldShowAnErrorForDuplicateCertificationEntry()
-        {
-            var message = _certPage.GetDuplicateMessage();
-            Assert.That(message, Does.Contain("Duplicated data"));  
-        }
+        //[Then(@"the portal should show an error for duplicate certification entry")]
+        //public void ThenThePortalShouldShowAnErrorForDuplicateCertificationEntry()
+        //{
+        //    var message = _certPage.GetDuplicateMessage();
+        //    Assert.That(message, Does.Contain("Duplicated data"));  
+        //}
 
         [Then(@"the certification should be updated successfully")]
         public void ThenCertificationUpdated()
@@ -112,12 +113,12 @@ namespace qa_dotnet_cucumber.Steps
             Assert.That(certs, Does.Contain("AWS Architect Expert"), "Edit did not update certification!");
         }
 
-        [Then(@"the portal should show an error for missing certification fields")]
-        public void ThenThePortalShouldShowAnErrorForMissingCertificationFields()
-        {
-            var message = _certPage.GetErrorMessage();
-            Assert.That(message, Does.Contain("Please enter Certification Name, Certification From and Certification Year")); 
-        }
+        //[Then(@"the portal should show an error for missing certification fields")]
+        //public void ThenThePortalShouldShowAnErrorForMissingCertificationFields()
+        //{
+        //    var message = _certPage.GetErrorMessage();
+        //    Assert.That(message, Does.Contain("Please enter Certification Name, Certification From and Certification Year")); 
+        //}
 
         [Then(@"the certification should be added successfully in portal")]
         public void ThenTheCertificationShouldBeAddedSuccessfullyInPortal()

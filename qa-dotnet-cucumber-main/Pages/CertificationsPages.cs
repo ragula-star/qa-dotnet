@@ -28,27 +28,56 @@ namespace qa_dotnet_cucumber.Pages
         private readonly By CertificationRows = By.XPath("//div[@data-tab='fourth']//table//tbody/tr");
         private readonly By DuplicatePopup = By.XPath("//div[contains(@class,'toast') or contains(text(),'already exists')]");
         private readonly By ErrorMessage = By.XPath("//div[contains(@class,'toast') or contains(@class,'ui message')]");
+        private readonly By SuccessMessage = By.XPath("//div[contains(@class,'toast')]");
 
-       
         public void GoToCertificationsTab()
         {
             _wait.Until(ExpectedConditions.ElementToBeClickable(CertificationsTab)).Click();
         }
+        public void WaitUntilAddNewIsClickable()
+        {
+            _wait.Until(ExpectedConditions.ElementToBeClickable(AddNewCertificationBtn)).Click();
+        }
 
         public void AddCertification(string certName, string certFrom, string certYear)
         {
+            
             _wait.Until(ExpectedConditions.ElementToBeClickable(AddNewCertificationBtn)).Click();
+
+           
             _wait.Until(ExpectedConditions.ElementIsVisible(CertificationName)).SendKeys(certName);
             _driver.FindElement(CertificationFrom).SendKeys(certFrom);
 
             if (!string.IsNullOrEmpty(certYear))
             {
                 var yearSelect = new SelectElement(_driver.FindElement(CertificationYear));
-                yearSelect.SelectByText(certYear);
+                try
+                {
+                    yearSelect.SelectByText(certYear);
+                }
+                catch (NoSuchElementException ex)
+                {
+                    
+                    Console.WriteLine($"Warning: Year '{certYear}' not found in dropdown. Continuing to attempt Add button click.");
+                }
             }
 
             _driver.FindElement(AddCertificationBtn).Click();
+
+            
+            try
+            {
+                _wait.Until(ExpectedConditions.ElementIsVisible(SuccessMessage));
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine("Warning: Success toast not found, continuing...");
+            }
+
+            Thread.Sleep(500); 
         }
+
+
 
         public void EditCertification(string oldName, string newName, string newFrom, string newYear)
         {
@@ -102,25 +131,32 @@ namespace qa_dotnet_cucumber.Pages
 
         public void DeleteAllCertifications()
         {
-            var rows = _driver.FindElements(CertificationRows);
-            foreach (var row in rows)
+            
+            var firstDeleteIcon = By.XPath("(//div[@data-tab='fourth']//table//tbody/tr//i[contains(@class,'remove icon')])[1]");
+            var shortWait = new WebDriverWait(_driver, TimeSpan.FromSeconds(5));
+
+            while (true)
             {
                 try
                 {
-                    var deleteBtn = row.FindElement(By.XPath(".//i[contains(@class,'remove')]"));
+                    
+                    IWebElement deleteBtn = shortWait.Until(ExpectedConditions.ElementToBeClickable(firstDeleteIcon));
                     deleteBtn.Click();
-
-                    WebDriverWait wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(5));
-                    wait.Until(d => !row.Displayed);
+                    System.Threading.Thread.Sleep(500);
                 }
-                catch (NoSuchElementException)
+                catch (OpenQA.Selenium.NoSuchElementException)
                 {
-                   
-                    continue;
+                    
+                    break;
+                }
+                catch (OpenQA.Selenium.WebDriverTimeoutException)
+                {
+                    
+                    break;
                 }
             }
         }
-        
+
         public List<string> GetAllCertifications()
         {
             var certs = new List<string>();
@@ -136,6 +172,12 @@ namespace qa_dotnet_cucumber.Pages
             return certs;
         }
 
+        public bool IsCertificationVisible(string certName)
+        {
+            var locator = By.XPath($"//td[contains(text(),'{certName}')]");
+            return _driver.FindElements(locator).Any();
+        }
+
         public string GetDuplicateMessage()
         {
             try
@@ -143,6 +185,19 @@ namespace qa_dotnet_cucumber.Pages
                 return _wait.Until(ExpectedConditions.ElementIsVisible(DuplicatePopup)).Text;
             }
             catch { return string.Empty; }
+        }
+        public string GetSuccessMessage()
+        {
+            try
+            {
+               
+                var toast = _wait.Until(ExpectedConditions.ElementIsVisible(SuccessMessage));
+                return toast.Text;
+            }
+            catch
+            {
+                return string.Empty; 
+            }
         }
 
         

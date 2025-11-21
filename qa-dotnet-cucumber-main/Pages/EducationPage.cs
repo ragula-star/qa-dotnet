@@ -31,150 +31,136 @@ namespace qa_dotnet_cucumber.Pages
         public void GoToEducationtab()
         {
             _wait.Until(ExpectedConditions.ElementToBeClickable(EducationTab)).Click();
-            //_wait.Until(ExpectedConditions.ElementToBeClickable(AddNewBtn)).Click();
+            _wait.Until(d => d.FindElement(AddNewBtn).Displayed); 
+        }
 
+        private void TryClickAddNew()
+        {
+            try
+            {
+                _wait.Until(ExpectedConditions.ElementToBeClickable(AddNewBtn)).Click();
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine("[WARN] Add New button not clickable, retrying...");
+                _driver.Navigate().Refresh();
+                _wait.Until(ExpectedConditions.ElementToBeClickable(AddNewBtn)).Click();
+            }
         }
 
         public void AddEducation(string university, string countrycollege, string title, string degree, string yeargraduation)
         {
-            _wait.Until(ExpectedConditions.ElementToBeClickable(AddNewBtn)).Click();
+            TryClickAddNew();
             _wait.Until(ExpectedConditions.ElementIsVisible(UniversityName));
-            _driver.FindElement(UniversityName).Clear();
-            _driver.FindElement(UniversityName).SendKeys(university);
 
-            
+            _driver.FindElement(UniversityName).Clear();
+            _driver.FindElement(UniversityName).SendKeys(university ?? "");
+
+           
             if (!string.IsNullOrEmpty(countrycollege))
             {
-                var countrySelect = new SelectElement(_driver.FindElement(Countrycollege));
-                countrySelect.SelectByText(countrycollege);
+                var select = new SelectElement(_driver.FindElement(Countrycollege));
+                var option = select.Options.FirstOrDefault(o => o.Text == countrycollege);
+                if (option != null)
+                    select.SelectByText(countrycollege);
+                else
+                    Console.WriteLine($"[INFO] Skipping invalid country value: {countrycollege}");
             }
 
            
             if (!string.IsNullOrEmpty(title))
             {
-                var titleSelect = new SelectElement(_driver.FindElement(Title));
-                titleSelect.SelectByText(title);
+                var select = new SelectElement(_driver.FindElement(Title));
+                var option = select.Options.FirstOrDefault(o => o.Text == title);
+                if (option != null)
+                    select.SelectByText(title);
+                else
+                    Console.WriteLine($"[INFO] Skipping invalid title value: {title}");
             }
 
             _driver.FindElement(Degree).Clear();
-            _driver.FindElement(Degree).SendKeys(degree);
+            _driver.FindElement(Degree).SendKeys(degree ?? "");
 
             
             if (!string.IsNullOrEmpty(yeargraduation))
             {
-                var yearSelect = new SelectElement(_driver.FindElement(YearGraduation));
-                yearSelect.SelectByText(yeargraduation);
+                var select = new SelectElement(_driver.FindElement(YearGraduation));
+                var option = select.Options.FirstOrDefault(o => o.Text == yeargraduation);
+                if (option != null)
+                    select.SelectByText(yeargraduation);
+                else
+                    Console.WriteLine($"[INFO] Skipping invalid year value: {yeargraduation}");
             }
 
             _driver.FindElement(AddEducationBtn).Click();
         }
 
-        public void DeleteEducationByUniversity(string universityName)
-        {
-            By educationRowLocator = By.XPath("//div[@class='twelve wide column scrollTable']//table//tbody/tr");
-            foreach (var row in _driver.FindElements(educationRowLocator))
-            {
-                try
-                {
-                    var uniCell = row.FindElement(By.XPath("./td[2]"));
-                    if (uniCell.Text.Equals(universityName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var deleteIcon = row.FindElement(By.XPath(".//i[contains(@class,'remove icon')]"));
-                        _wait.Until(ExpectedConditions.ElementToBeClickable(deleteIcon)).Click();
-
-                        
-                        _wait.Until(d => !_driver.FindElements(educationRowLocator)
-                            .Any(r => r.FindElement(By.XPath("./td[2]")).Text.Equals(universityName, StringComparison.OrdinalIgnoreCase)));
-                        break; 
-                    }
-                }
-                catch (StaleElementReferenceException)
-                {
-                    continue; 
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-
-        }
-
         public void DeleteAllEducation()
         {
-            
-            By educationRowLocator = By.XPath("//div[@data-tab='third']//table/tbody/tr");
-            By deleteIconLocator = By.XPath(".//i[contains(@class,'remove icon')]");
+            By rowLocator = By.XPath("//div[@data-tab='third']//table/tbody/tr");
+            By deleteLocator = By.XPath(".//i[contains(@class,'remove icon')]");
 
-            while (_driver.FindElements(educationRowLocator).Count > 0)
+            while (_driver.FindElements(rowLocator).Count > 0)
             {
-                
-                var skillRows = _driver.FindElements(educationRowLocator);
-                int initialCount = skillRows.Count;
+                var rows = _driver.FindElements(rowLocator);
+                int initialCount = rows.Count;
 
-                
                 try
                 {
-                    IWebElement firstRow = skillRows[0];
-                   _wait.Until(ExpectedConditions.ElementToBeClickable(firstRow.FindElement(deleteIconLocator))).Click();
-
-                   
+                    var firstRow = rows[0];
+                    _wait.Until(ExpectedConditions.ElementToBeClickable(firstRow.FindElement(deleteLocator))).Click();
                 }
                 catch (StaleElementReferenceException)
                 {
-                    
                     continue;
                 }
 
-                 _wait.Until(d => d.FindElements(educationRowLocator).Count < initialCount);
+                _wait.Until(d => d.FindElements(rowLocator).Count < initialCount);
             }
         }
-
 
         public List<string> GetAllEducation()
         {
             var entries = new List<string>();
             var rows = _driver.FindElements(By.XPath("//div[@data-tab='third']//table//tr"));
-
             foreach (var row in rows)
             {
                 try
                 {
-                    var university = row.FindElement(By.XPath(".//td[1]")).Text;
-                    entries.Add(university);
+                    var university = row.FindElements(By.TagName("td")).FirstOrDefault()?.Text;
+                    if (!string.IsNullOrEmpty(university))
+                        entries.Add(university);
                 }
                 catch
                 {
                     continue;
                 }
             }
-
             return entries;
         }
-
-        public void ResetAndAddEducation(List<(string university, string countryCollege, string title, string degree, string year)> education)
+        public void EditLastEducation(string university, string country, string title, string degree, string year)
         {
-            GoToEducationtab();
-            DeleteAllEducation();
+            
+            var rows = _driver.FindElements(By.XPath("//div[@data-tab='third']//table//tbody/tr"));
+            if (!rows.Any()) return;
+            var lastRow = rows.Last();
+            lastRow.FindElement(By.XPath(".//i[contains(@class,'outline write icon')]")).Click();
 
-            foreach (var edu in education)
-            {
-                AddEducation(edu.university, edu.countryCollege, edu.title, edu.degree, edu.year);
-            }
+            AddEducation(university, country, title, degree, year);
         }
-       
+
+
         public string GetDuplicateMessage()
         {
             try
             {
-                return _wait.Until(ExpectedConditions.ElementIsVisible(DuplicatePopup)).Text;
+                return _wait.Until(ExpectedConditions.ElementIsVisible(DuplicatePopup)).Text.Trim();
             }
             catch
             {
                 return string.Empty;
             }
         }
-
         public string AssertDuplicateMessage()
         {
             var message = GetDuplicateMessage();
@@ -191,7 +177,7 @@ namespace qa_dotnet_cucumber.Pages
             try
             {
                 var errorLocator = By.XPath("//div[contains(@class,'toast') or contains(@class,'ui message')]");
-                return _wait.Until(ExpectedConditions.ElementIsVisible(errorLocator)).Text;
+                return _wait.Until(ExpectedConditions.ElementIsVisible(errorLocator)).Text.Trim();
             }
             catch (WebDriverTimeoutException)
             {
@@ -199,8 +185,5 @@ namespace qa_dotnet_cucumber.Pages
                 return string.Empty;
             }
         }
-
-
     }
 }
-
