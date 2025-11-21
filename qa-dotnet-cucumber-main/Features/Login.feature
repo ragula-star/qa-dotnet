@@ -72,3 +72,4 @@ Feature: Login Functionality
     Given I am on the login page
     When I enter password with leading and trailing spaces
     Then I should see an enter valid email message
+    

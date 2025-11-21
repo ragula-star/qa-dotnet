@@ -37,9 +37,8 @@ namespace qa_dotnet_cucumber.Hooks
             string json = File.ReadAllText(settingsPath);
             _settings = JsonSerializer.Deserialize<TestSettings>(json);
 
-            // Get project root by navigating up from bin/Debug/net8.0
             string projectRoot = Path.GetFullPath(Path.Combine(currentDir, "..", ".."));
-            string reportFileName = _settings.Report.Path.TrimStart('/'); // e.g., "TestReport.html"
+            string reportFileName = _settings.Report.Path.TrimStart('/');
             string reportPath = Path.Combine(projectRoot, reportFileName);
 
             _htmlReporter = new ExtentSparkReporter(reportPath);
@@ -47,6 +46,7 @@ namespace qa_dotnet_cucumber.Hooks
             _extent.AttachReporter(_htmlReporter);
             _extent.AddSystemInfo("Environment", _settings.Environment.BaseUrl);
             _extent.AddSystemInfo("Browser", _settings.Browser.Type);
+
             Console.WriteLine($"BeforeTestRun started at {DateTime.Now}, Report Path: {reportPath}");
         }
 
@@ -54,12 +54,13 @@ namespace qa_dotnet_cucumber.Hooks
         public void BeforeScenario(ScenarioContext scenarioContext)
         {
             Console.WriteLine($"Starting {scenarioContext.ScenarioInfo.Title} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
+
             new DriverManager().SetUpDriver(new ChromeConfig());
             var chromeOptions = new ChromeOptions();
+
             if (_settings.Browser.Headless)
-            {
                 chromeOptions.AddArgument("--headless");
-            }
+
             var driver = new ChromeDriver(chromeOptions);
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(_settings.Browser.TimeoutSeconds);
             driver.Manage().Window.Maximize();
@@ -68,10 +69,66 @@ namespace qa_dotnet_cucumber.Hooks
             _objectContainer.RegisterInstanceAs(new NavigationHelper(driver));
             _objectContainer.RegisterInstanceAs(new LoginPage(driver));
 
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("LanguageUpgrade"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                string[] previousLanguages = { "English", "French", "Hindi", "Tamil" };
+                foreach (var lang in previousLanguages)
+                    languagePage.CleanupLanguage(lang);
+            }
+
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("LanguageUpgradeNegative"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                languagePage.LoginToApplication();
+                languagePage.GoToLanguagesTab();
+                languagePage.DeleteAllLanguages();
+            }
+
+            
+            if (scenarioContext.ScenarioInfo.Tags.Contains("SkillUpgrade"))
+            {
+                var skillPage = new SkillUpgradePages(driver);
+                skillPage.GoToSkillsTab();
+                skillPage.DeleteAllSkills();
+            }
+            if (scenarioContext.ScenarioInfo.Tags.Contains("Education") ||
+                scenarioContext.ScenarioInfo.Tags.Contains("EducationUpgrade"))
+            {
+                var educationPage = new EducationPage(driver);
+                educationPage.GoToEducationtab();
+                educationPage.DeleteAllEducation();
+
+                scenarioContext["AddedEducation"] =
+                    new List<(string university, string countryCollege, string title, string degree, string year)>();
+            }
+
+            
+            if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("Education") ||
+                ScenarioContext.Current.ScenarioInfo.Tags.Contains("EducationUpgrade"))
+            {
+                var educationPage = new EducationPage(driver);
+
+                educationPage.GoToEducationtab();
+
+                var rows = driver.FindElements(
+                    By.XPath("//div[@data-tab='third']//table//tbody/tr")
+                );
+
+                if (rows.Count > 0)
+                {
+                    educationPage.DeleteAllEducation();
+                }
+            }
+
+
             lock (_reportLock)
             {
                 _test = _extent!.CreateTest(scenarioContext.ScenarioInfo.Title);
             }
+
             Console.WriteLine($"Created test: {scenarioContext.ScenarioInfo.Title} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
         }
 
@@ -80,12 +137,12 @@ namespace qa_dotnet_cucumber.Hooks
         {
             var stepType = scenarioContext.StepContext.StepInfo.StepDefinitionType.ToString();
             var stepText = scenarioContext.StepContext.StepInfo.Text;
+
             lock (_reportLock)
             {
                 if (scenarioContext.TestError == null)
                 {
                     _test!.Log(Status.Pass, $"{stepType} {stepText}");
-                    Console.WriteLine($"Logged pass: {stepType} {stepText} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
                 }
                 else
                 {
@@ -93,8 +150,9 @@ namespace qa_dotnet_cucumber.Hooks
                     var screenshot = ((ITakesScreenshot)driver).GetScreenshot();
                     var screenshotPath = Path.Combine(Directory.GetCurrentDirectory(), $"Screenshot_{DateTime.Now.Ticks}_{Thread.CurrentThread.ManagedThreadId}.png");
                     screenshot.SaveAsFile(screenshotPath);
-                    _test!.Log(Status.Fail, $"{stepType} {stepText}", MediaEntityBuilder.CreateScreenCaptureFromPath(screenshotPath).Build());
-                    Console.WriteLine($"Logged fail with screenshot: {screenshotPath} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
+
+                    _test!.Log(Status.Fail, $"{stepType} {stepText}",
+                        MediaEntityBuilder.CreateScreenCaptureFromPath(screenshotPath).Build());
                 }
             }
         }
@@ -103,6 +161,53 @@ namespace qa_dotnet_cucumber.Hooks
         public void AfterScenario()
         {
             var driver = _objectContainer.Resolve<IWebDriver>();
+
+            
+            if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("LanguageUpgrade"))
+            {
+                var languagePage = new LanguageUpgradePages(driver);
+                if (ScenarioContext.Current.TryGetValue("TestLanguage", out string testLanguage))
+                {
+                    languagePage.CleanupLanguage(testLanguage);
+                }
+            }
+
+            
+            if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("SkillUpgrade"))
+            {
+                var skillPage = new SkillUpgradePages(driver);
+                if (ScenarioContext.Current.TryGetValue("AddedSkills", out List<string> addedSkills))
+                {
+                    foreach (var skill in addedSkills)
+                        skillPage.DeleteSkillByName(skill);
+                }
+            }
+
+            
+            if (ScenarioContext.Current.TryGetValue("AddedCerts", out List<string> addedCerts) && addedCerts != null)
+            {
+                var certPage = new CertificationsPage(driver);
+                certPage.GoToCertificationsTab();
+
+                foreach (var certName in addedCerts)
+                    certPage.DeleteCertificationByName(certName);
+            }
+
+            
+            //if (ScenarioContext.Current.ScenarioInfo.Tags.Contains("Education") ||
+            //    ScenarioContext.Current.ScenarioInfo.Tags.Contains("EducationUpgrade"))
+            //{
+            //    if (ScenarioContext.Current.TryGetValue("AddedEducation",
+            //        out List<(string university, string countryCollege, string title, string degree, string year)> addedEducation))
+            //    {
+            //        var educationPage = new EducationPage(driver);
+            //        educationPage.GoToEducationtab();
+
+            //        foreach (var edu in addedEducation)
+            //            educationPage.DeleteAllEducation();
+            //    }
+            //}
+
             driver?.Quit();
             Console.WriteLine($"Finished scenario on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now}");
         }
@@ -112,7 +217,7 @@ namespace qa_dotnet_cucumber.Hooks
         {
             lock (_reportLock)
             {
-                Console.WriteLine("AfterTestRun executed - Flushing report to: " + _settings.Report.Path + " at " + DateTime.Now);
+                Console.WriteLine("AfterTestRun executed - Flushing report at " + DateTime.Now);
                 _extent!.Flush();
             }
         }
